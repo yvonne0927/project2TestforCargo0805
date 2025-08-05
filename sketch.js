@@ -4,9 +4,8 @@ let ball, ballTrail = [];
 let generatedBallsCount = 0;
 let maxBalls = 500;
 let countDisplay;
-let camera = { y: 0, smoothFollow: true }; // 摄像机位置和平滑跟随开关
-let hasTriggeredFullscreen = false; // 跟踪是否已经触发过全屏
-let backgroundImage; // 添加背景图片变量
+let camera = { y: 0, smoothFollow: true };
+let backgroundImage;
 
 var Engine = Matter.Engine,
     Render = Matter.Render,
@@ -32,7 +31,7 @@ function preload() {
                 createNativeImage(img);
             },
             function() {
-                console.error('背景图片加载失败，请确保 backgroundTest.png 文件在正确的路径');
+                console.error('背景图片加载失败');
                 backgroundImage = null;
             }
         );
@@ -56,53 +55,88 @@ function createNativeImage(p5Image) {
 }
 
 function setup() {
-  const canvas = createCanvas(windowWidth, windowHeight);
-  canvas.style('display', 'block');
-  canvas.style('margin', '0');
-  canvas.style('padding', '0');
-  canvas.style('position', 'absolute');
-  canvas.style('top', '0');
-  canvas.style('left', '0');
-  canvas.style('z-index', '0');
-  noLoop();
-
+    const canvas = createCanvas(1280, 1920);
+    canvas.style('margin', '0 auto');
+    canvas.style('max-width', '100vw');
+    canvas.style('max-height', '100vh');
+    canvas.style('object-fit', 'contain');
+    noLoop();
 
     resetButton = createButton('Reset Ball');
-    resetButton.position(10, 10); // 移到左上角
+    resetButton.position(10, 10);
     resetButton.style('background-color', '#ffcc00');
     resetButton.style('color', '#E52929');
     resetButton.style('padding', '10px');
     resetButton.style('z-index', '1000');
     resetButton.mousePressed(resetBall);
     
+    // 移除全屏按钮，因为在iframe中不需要
     
+    // 添加iframe优化的样式
+    setupIframeStyles();
     
     // 初始调整画布适应窗口大小
     setTimeout(() => {
-        adjustCanvasForScaling();
+        adjustCanvasForIframe();
     }, 100);
     
     // Initialize Matter.js after canvas is created
     initializeMatterJS();
 }
 
+function setupIframeStyles() {
+    const style = document.createElement('style');
+    style.textContent = `
+        /* 针对iframe环境优化的样式 */
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden; /* 隐藏滚动条 */
+        }
+        
+        canvas {
+            display: block !important;
+            margin: 0 auto !important;
+        }
+        
+        /* 确保按钮在iframe中可见 */
+        button {
+            position: fixed !important;
+            z-index: 9999 !important;
+        }
+        
+        div {
+            position: fixed !important;
+            z-index: 9999 !important;
+        }
+    `;
+    document.head.appendChild(style);
+}
 
+// iframe环境下的画布自适应函数
+function adjustCanvasForIframe() {
+    const canvas = document.querySelector('canvas');
+    if (canvas) {
+        // 获取iframe的可用空间
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
         
-        console.log(`全屏模式 - 屏幕尺寸: ${screenWidth}x${screenHeight}`);
-        console.log(`宽度缩放比例: ${scaleX.toFixed(3)}, 高度缩放比例: ${scaleY.toFixed(3)}`);
+        // 计算缩放比例，保持16:9的宽高比（类似你原来的全屏效果）
+        const scaleX = viewportWidth / 1280;
+        const scaleY = viewportHeight / 1920;
+        
+        // 使用宽度适配，保留两边的空白（就像你喜欢的全屏效果）
+        const scale = scaleX;
+        
+        console.log(`iframe模式 - 视口尺寸: ${viewportWidth}x${viewportHeight}`);
         console.log(`选择宽度适配，缩放比例: ${scale.toFixed(3)}`);
-        console.log(`计算后画布尺寸: ${(1280 * scale).toFixed(0)}x${(1920 * scale).toFixed(0)}`);
         
-        // 先重置所有样式
-        canvas.style.transform = '';
-        canvas.style.position = '';
-        canvas.style.top = '';
-        canvas.style.left = '';
-        canvas.style.margin = '';
-        canvas.style.marginTop = '';
-        canvas.style.marginLeft = '';
-        
-        // 应用新的样式 - 宽度填满，垂直居中
+        // 应用样式 - 宽度填满，垂直居中，保留两边空白
         canvas.style.position = 'fixed';
         canvas.style.top = '50%';
         canvas.style.left = '50%';
@@ -110,86 +144,29 @@ function setup() {
         canvas.style.transformOrigin = 'center center';
         canvas.style.zIndex = '100';
         
-        console.log('已应用全屏样式（宽度适配）');
-
-
-
-        
-        // 完全重置所有可能的样式
-        canvas.style.transform = '';
-        canvas.style.transformOrigin = '';
-        canvas.style.position = '';
-        canvas.style.top = '';
-        canvas.style.left = '';
-        canvas.style.margin = '';
-        canvas.style.marginTop = '';
-        canvas.style.marginLeft = '';
-        canvas.style.zIndex = '';
-        canvas.style.width = '';
-        canvas.style.height = '';
-        
-        // 重新应用基本的居中样式，与style.css协调
-        canvas.style.display = 'block';
-        canvas.style.margin = '0 auto';
-        canvas.style.maxWidth = '100vw';
-        canvas.style.maxHeight = '100vh';
-        canvas.style.objectFit = 'contain';
-        
-        // 延迟应用窗口适应
-        setTimeout(() => {
-            adjustCanvasForScaling();
-        }, 50);
-    
-
-
-// 添加新函数：非全屏模式下的自适应缩放
-function adjustCanvasForWindow() {
-    const canvas = document.querySelector('canvas');
-    if (canvas && !document.fullscreenElement) {
-        // 获取视口尺寸
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
-        
-        // 计算缩放比例
-        const scaleX = viewportWidth / 1280;
-        const scaleY = viewportHeight / 1920;
-        
-        // 窗口模式下仍然保持宽高比，避免变形
-        const scale = Math.min(scaleX, scaleY, 1); // 限制最大缩放为1，避免放大
-        
-        // 应用缩放，但保持CSS的居中样式
-        canvas.style.transform = `scale(${scale})`;
-        canvas.style.transformOrigin = 'center center';
-        canvas.style.maxWidth = '100vw';
-        canvas.style.maxHeight = '100vh';
-        
-        console.log(`窗口模式 - 视口尺寸: ${viewportWidth}x${viewportHeight}, 缩放: ${scale.toFixed(2)}`);
+        console.log('已应用iframe优化样式（保留两边空白）');
     }
 }
 
 function initializeMatterJS() {
-    // Create engine
     engine = Engine.create();
     world = engine.world;
     engine.world.gravity.y = 0.2;
     
-    // Create renderer - attach to p5.js canvas instead of body
     render = Render.create({
-        canvas: document.querySelector('canvas'), // Use p5.js canvas
+        canvas: document.querySelector('canvas'),
         engine: engine,
         options: {
-            width: 1280, // Updated to match canvas width
-            height: 1920, // Updated to match canvas height
+            width: 1280,
+            height: 1920,
             hasBounds: true,
             wireframes: false,
-            background: 'transparent', // 设置为透明
+            background: 'transparent',
             showAngleIndicator: false,
             showVelocity: false,
             showDebug: false,
             showBroadphase: false,
             showBounds: false,
-            showVelocity: false,
-            showAngleIndicator: false,
             showIds: false,
             showShadows: false,
             showVertexNumbers: false,
@@ -198,17 +175,12 @@ function initializeMatterJS() {
         }
     });
     
-    // 摄像机跟随更新
     Events.on(engine, 'beforeUpdate', function() {
         updateCamera();
     });
     
-    // 完全重写背景渲染逻辑
     Events.on(render, 'beforeRender', function() {
         var ctx = render.canvas.getContext('2d');
-        
-        // 不要清除画布，让 p5.js 的背景保持
-        // ctx.clearRect(0, 0, render.canvas.width, render.canvas.height);
     });
     
     // 在所有物体渲染之后绘制背景（在物体下方）
@@ -218,24 +190,12 @@ function initializeMatterJS() {
             
             try {
                 ctx.save();
-                
-                // 使用 globalCompositeOperation 将背景绘制到最底层
                 ctx.globalCompositeOperation = 'destination-over';
-                
-                // 使用 Matter.js 的视口变换
                 Render.startViewTransform(render);
-                
-                // 绘制背景图片
                 ctx.drawImage(window.nativeBackgroundImage, 0, 0, 1280, 3200);
-                
                 Render.endViewTransform(render);
-                
-                // 恢复正常的合成模式
                 ctx.globalCompositeOperation = 'source-over';
-                
                 ctx.restore();
-                
-                console.log('背景已绘制到底层'); // 调试信息
             } catch (error) {
                 console.error('绘制背景图片时出错:', error);
             }
@@ -244,11 +204,9 @@ function initializeMatterJS() {
     
     Render.run(render);
     
-    // Create runner
     runner = Runner.create();
     Runner.run(runner, engine);
     
-    // Add all the game objects
     createBridge();
     createHangingBalls();
     createMovingRectangles();
@@ -262,20 +220,12 @@ function initializeMatterJS() {
     setupCountDisplay();
 }
 
-function draw() {
-    // p5.js draw loop is disabled with noLoop() in setup()
-    // Matter.js handles all rendering
-}
-
 function createBridge() {
-    // 创建主桥链 - 调整位置避免冲突
     createSingleBridge(width/2.8, width/1.6, 2180, 8);
-    
-    // 添加4个额外的桥链在不同位置 - 微调避免冲突
-    createSingleBridge(width/5, width/2.8, 780, 6);      // 上层短桥
-    createSingleBridge(width/1.9, width/1.3, 1180, 7);   // 中上层桥
-    createSingleBridge(width/7, width/3.2, 1580, 5);     // 中层短桥  
-    createSingleBridge(width/2.5, width/1.5, 2580, 9);   // 下层长桥
+    createSingleBridge(width/5, width/2.8, 780, 6);
+    createSingleBridge(width/1.9, width/1.3, 1180, 7);
+    createSingleBridge(width/7, width/3.2, 1580, 5);
+    createSingleBridge(width/2.5, width/1.5, 2580, 9);
 }
 
 function createSingleBridge(leftX, rightX, y, segmentCount) {
@@ -286,8 +236,6 @@ function createSingleBridge(leftX, rightX, y, segmentCount) {
     };
     
     var group = Body.nextGroup(true);
-    
-    // 计算桥链的起始X位置（居中）
     var bridgeStartX = leftX + (rightX - leftX) / 2 - (segmentCount * 25) / 2;
     
     var bridge = Composites.stack(bridgeStartX, y, segmentCount, 1, 0, 0,
@@ -297,7 +245,7 @@ function createSingleBridge(leftX, rightX, y, segmentCount) {
                 chamfer: 5,
                 density: 0.1,
                 frictionAir: 0.05,
-                label: 'bridgeSegment', // 使用桥链专用标签便于识别
+                label: 'bridgeSegment',
                 render: { fillStyle: '#060a19' }
             });
         });
@@ -341,13 +289,13 @@ function createHangingBall(x, y, radius, world, label = 'target') {
         pointA: { x: x, y: 0 },
         bodyB: body,
         pointB: { x: 0, y: 0 },
-        stiffness: 1, // 增加刚度，减少弯曲
-        damping: 0.1, // 减少阻尼
+        stiffness: 1,
+        damping: 0.1,
         render: { 
             visible: true,
             lineWidth: 2,
             strokeStyle: '#ffffff',
-            type: 'line' // 确保显示为直线
+            type: 'line'
         }
     });
     Composite.add(world, [body, constraint]);
@@ -423,23 +371,14 @@ function createMovingRectangle(xStart, xMin, xMax, y, rectWidth, rectHeight, spe
 }
 
 function createMovingRectangles() {
-    // 上层区域 - 避开桥链780和hanging balls
     createMovingRectangle(80, width/25*2, width/25*6, 650, 80, 8, 0.4);
     createMovingRectangle(250, width/25*14, width/25*19, 720, 100, 6, 0.3);
-    
-    // 中上层区域 - 避开桥链1180
     createMovingRectangle(120, width/25*1, width/25*8, 1050, 120, 10, 0.5);
     createMovingRectangle(180, width/25*15, width/25*23, 1120, 90, 7, 0.35);
-    
-    // 中层区域 - 避开桥链1580
     createMovingRectangle(100, width/25*10, width/25*18, 1480, 110, 8, 0.45);
     createMovingRectangle(280, width/25*20, width/25*24, 1520, 95, 9, 0.4);
-    
-    // 中下层区域 - 避开桥链2180
     createMovingRectangle(150, width/25*1, width/25*12, 1920, 130, 12, 0.3);
     createMovingRectangle(200, width/25*15, width/25*24, 2020, 100, 8, 0.5);
-    
-    // 下层区域 - 避开桥链2580  
     createMovingRectangle(220, width/25*3, width/25*15, 2450, 140, 10, 0.35);
     createMovingRectangle(320, width/25*18, width/25*23, 2520, 85, 6, 0.6);
 }
@@ -470,32 +409,21 @@ function createSeesaw(x, y, seesawWidth, seesawHeight, label = 'target', angular
 }
 
 function createSeesaws() {
-    // 上层区域 (350-650) - 避开桥链780
     createSeesaw(180, 380, 120, 8, 'target', -0.025);
     createSeesaw(580, 480, 150, 7, 'target', 0.035);
     createSeesaw(950, 420, 100, 9, 'target', -0.04);
-    
-    // 中上层区域 (850-1080) - 避开桥链1180
     createSeesaw(120, 880, 180, 6, 'target', 0.03);
     createSeesaw(750, 920, 140, 8, 'target', -0.045);
     createSeesaw(450, 980, 160, 7, 'target', 0.025);
-    
-    // 中层区域 (1250-1480) - 避开桥链1580
     createSeesaw(280, 1280, 130, 9, 'target', -0.035);
     createSeesaw(680, 1350, 170, 6, 'target', 0.04);
     createSeesaw(1050, 1420, 145, 8, 'target', -0.03);
-    
-    // 中下层区域 (1650-1880) - 避开桥链2180
     createSeesaw(220, 1720, 155, 7, 'target', 0.038);
     createSeesaw(620, 1820, 125, 9, 'target', -0.042);
     createSeesaw(920, 1750, 165, 6, 'target', 0.028);
-    
-    // 下层区域 (2250-2450) - 避开桥链2580
     createSeesaw(320, 2280, 140, 8, 'target', -0.036);
     createSeesaw(720, 2350, 175, 7, 'target', 0.032);
     createSeesaw(480, 2420, 120, 9, 'target', -0.04);
-    
-    // 最下层区域 (2680-2900)
     createSeesaw(380, 2720, 160, 8, 'target', 0.035);
     createSeesaw(880, 2850, 135, 7, 'target', -0.03);
 }
@@ -514,22 +442,22 @@ function createMainBall() {
 
 function createWalls() {
     Composite.add(world, [
-        Bodies.rectangle(width/2, 3000, width, 100, { // 底部墙壁 - 加厚并确保位置正确
+        Bodies.rectangle(width/2, 3000, width, 100, {
             isStatic: true, 
             render: { visible: false }, 
             label: 'wall'
         }),
-        Bodies.rectangle(-50, 1500, 100, 3100, { // 左侧墙壁 - 加厚并覆盖整个世界高度
+        Bodies.rectangle(-50, 1500, 100, 3100, {
             isStatic: true, 
             render: { visible: false }, 
             label: 'wall'
         }),
-        Bodies.rectangle(width/2, -50, width, 100, { // 顶部墙壁 - 加厚
+        Bodies.rectangle(width/2, -50, width, 100, {
             isStatic: true, 
             render: { visible: false }, 
             label: 'wall'
         }),
-        Bodies.rectangle(width + 50, 1500, 100, 3100, { // 右侧墙壁 - 加厚并覆盖整个世界高度
+        Bodies.rectangle(width + 50, 1500, 100, 3100, {
             isStatic: true, 
             render: { visible: false }, 
             label: 'wall'
@@ -545,14 +473,12 @@ function setupMouseControl() {
             angularStiffness: 0.3,
             stiffness: 0.5,
             render: { visible: false },
-            label: 'mouse-constraint' // 添加标签以便识别
+            label: 'mouse-constraint'
         }
     });
     
-    // 修改鼠标约束，使其可以拖拽桥链但不拖拽 mainBall
     Events.on(mouseConstraint, 'startdrag', function(event) {
         var draggedBody = event.body;
-        // 如果尝试拖拽 mainBall，则取消拖拽
         if (draggedBody.label === 'mainBall') {
             mouseConstraint.constraint.bodyB = null;
             mouseConstraint.constraint.pointB = null;
@@ -566,7 +492,6 @@ function setupMouseControl() {
 function setupEventListeners() {
     var isMouseConstraintActive = false;
     
-    // 监听鼠标约束的开始和结束
     Events.on(engine, 'beforeUpdate', function() {
         var mouseConstraint = world.constraints.find(c => c.label === 'mouse-constraint');
         if (mouseConstraint) {
@@ -574,16 +499,10 @@ function setupEventListeners() {
         }
     });
     
+    // 简化的鼠标事件 - 移除全屏相关逻辑
     document.addEventListener('mousedown', function(event) {
         if (event.button === 0) {
-            // 首次点击时尝试进入全屏
-            if (!hasTriggeredFullscreen && !document.fullscreenElement) {
-                toggleFullscreen();
-            }
-            
-            // 延迟检查，确保鼠标约束有时间激活
             setTimeout(function() {
-                // 只有当鼠标没有拖拽任何物体时，才对小球施加力
                 if (!isMouseConstraintActive) {
                     applyLeftAndBounceForce(event.clientX);
                 }
@@ -591,53 +510,18 @@ function setupEventListeners() {
         }
     });
     
-    // 监听全屏状态变化
-    document.addEventListener('fullscreenchange', function() {
-        if (document.fullscreenElement) {
-            console.log('全屏状态变化：已激活');
-            // 延迟调整，确保全屏完全激活
-            setTimeout(() => {
-                adjustCanvasForFullscreen();
-            }, 300);
-        } else {
-            console.log('全屏状态变化：已退出');
-            restoreCanvasStyle();
-        }
-    });
-    
-    // 监听窗口大小变化（适应屏幕旋转等）
+    // 监听窗口大小变化
     window.addEventListener('resize', function() {
-        console.log('窗口大小变化，当前全屏状态:', !!document.fullscreenElement);
-        if (document.fullscreenElement) {
-            setTimeout(() => {
-                adjustCanvasForFullscreen();
-            }, 100);
-        } else {
-            setTimeout(() => {
-                adjustCanvasForWindow();
-            }, 100);
-        }
+        console.log('窗口大小变化 - iframe环境');
+        setTimeout(() => {
+            adjustCanvasForIframe();
+        }, 100);
     });
     
-    // 监听键盘事件
-    document.addEventListener('keydown', function(event) {
-        // 按 F 键切换全屏
-        if (event.key === 'f' || event.key === 'F') {
-            event.preventDefault();
-            toggleFullscreen();
-        }
-        // 按 ESC 键退出全屏
-        if (event.key === 'Escape' && document.fullscreenElement) {
-            document.exitFullscreen();
-        }
-    });
-    
-    // 边界检测：使用画面坐标而不是世界坐标
+    // 边界检测
     Events.on(engine, 'beforeUpdate', function () {
         Composite.allBodies(world).forEach(function (body) {
-            // 对所有小球（mainBall 和 generatedBall）进行边界检测
             if (body.label === 'mainBall' || body.label === 'generatedBall') {
-                // X轴边界检测（画面宽度 = 1280px）
                 if (body.position.x < 0) {
                     Matter.Body.setPosition(body, { x: 10, y: body.position.y });
                     Matter.Body.setVelocity(body, { x: Math.abs(body.velocity.x), y: body.velocity.y });
@@ -647,7 +531,6 @@ function setupEventListeners() {
                     Matter.Body.setVelocity(body, { x: -Math.abs(body.velocity.x), y: body.velocity.y });
                 }
                 
-                // Y轴边界检测（世界高度 = 3200px，但这是正确的）
                 if (body.position.y < 0) {
                     Matter.Body.setPosition(body, { x: body.position.x, y: 10 });
                     Matter.Body.setVelocity(body, { x: body.velocity.x, y: Math.abs(body.velocity.y) });
@@ -691,49 +574,30 @@ function setupBallTrail() {
 
 function updateCamera() {
     if (ball) {
-        // 计算目标摄像机位置：让小球始终位于画面高度的一半
         var targetCameraY = ball.position.y - (height / 2);
+        var worldHeight = 3200;
+        var minCameraY = -200;
+        var maxCameraY = worldHeight - height + 200;
         
-        // 扩展边界限制，允许查看世界的最上端和最下端
-        var worldHeight = 3200; // 扩展的世界高度
-        var minCameraY = -200; // 允许摄像机向上超出一些，查看世界顶部
-        var maxCameraY = worldHeight - height + 200; // 允许摄像机向下超出一些，查看世界底部
-        
-        // 将目标位置限制在扩展的有效范围内
         targetCameraY = Math.max(minCameraY, Math.min(maxCameraY, targetCameraY));
         
         if (camera.smoothFollow) {
-            // 平滑跟随模式
-            var lerpFactor = 0.3; // 较快的跟随速度
+            var lerpFactor = 0.3;
             camera.y += (targetCameraY - camera.y) * lerpFactor;
             
-            // 如果差距很小，直接设置为目标位置，消除微小延迟
             if (Math.abs(targetCameraY - camera.y) < 1) {
                 camera.y = targetCameraY;
             }
         } else {
-            // 即时跟随模式 - 完全没有延迟
             camera.y = targetCameraY;
         }
         
-        // 再次确保摄像机位置在扩展的有效范围内
         camera.y = Math.max(minCameraY, Math.min(maxCameraY, camera.y));
         
-        // 更新 Matter.js 渲染器的视口边界
         render.bounds.min.y = camera.y;
         render.bounds.max.y = camera.y + height;
-        
-        // 保持 x 轴边界不变（不跟随横向移动）
         render.bounds.min.x = 0;
         render.bounds.max.x = width;
-        
-        // 调试信息：显示摄像机边界状态
-        if (camera.y <= minCameraY + 10) {
-            console.log('摄像机已到达世界顶部边界');
-        }
-        if (camera.y >= maxCameraY - 10) {
-            console.log('摄像机已到达世界底部边界');
-        }
     }
 }
 
@@ -744,12 +608,9 @@ function setupCollisionEvents() {
         pairs.forEach(function (pair) {
             var bodyA = pair.bodyA;
             var bodyB = pair.bodyB;
-            
-            // 检查是否是 mainBall 与任何目标物体的碰撞
             var mainBallBody = null;
             var targetBody = null;
             
-            // 检查与普通目标物体的碰撞
             if (bodyA.label === 'mainBall' && bodyB.label === 'target') {
                 mainBallBody = bodyA;
                 targetBody = bodyB;
@@ -757,7 +618,6 @@ function setupCollisionEvents() {
                 mainBallBody = bodyB;
                 targetBody = bodyA;
             }
-            // 检查与桥链段的碰撞
             else if (bodyA.label === 'mainBall' && bodyB.label === 'bridgeSegment') {
                 mainBallBody = bodyA;
                 targetBody = bodyB;
@@ -766,48 +626,40 @@ function setupCollisionEvents() {
                 targetBody = bodyA;
             }
             
-            // 如果检测到碰撞
             if (mainBallBody && targetBody) {
                 console.log('检测到 mainBall 与目标物体的碰撞:', targetBody.label);
-                console.log('目标物体已生成球:', targetBody.generated);
                 
-                // 防止同一物体重复生成球
                 if (targetBody.generated) {
                     console.log('该物体已经生成过球，跳过');
                     return;
                 }
                 
-                // 标记该物体已生成球
                 targetBody.generated = true;
                 
-                // 在碰撞点创建新球
                 var newBallX = (bodyA.position.x + bodyB.position.x) / 2;
                 var newBallY = (bodyA.position.y + bodyB.position.y) / 2;
-                var newBallRadius = Math.random() * 8 + 5; // 随机大小 5-13
+                var newBallRadius = Math.random() * 8 + 5;
                 
                 var newBall = Bodies.circle(newBallX, newBallY, newBallRadius, {
                     restitution: 0.8,
                     frictionAir: 0.02,
                     friction: 0.1,
                     render: { 
-                        fillStyle: `hsl(${Math.random() * 360}, 70%, 60%)` // 随机颜色
+                        fillStyle: `hsl(${Math.random() * 360}, 70%, 60%)`
                     },
                     label: 'generatedBall'
                 });
                 
-                // 给新球施加随机初始速度
                 Body.setVelocity(newBall, {
                     x: (Math.random() - 0.5) * 10,
                     y: (Math.random() - 0.5) * 10
                 });
                 
-                // 添加新球到世界
                 Composite.add(world, newBall);
                 generatedBallsCount++;
                 
                 console.log(`成功生成新球！位置: (${newBallX.toFixed(1)}, ${newBallY.toFixed(1)}), 总数: ${generatedBallsCount}`);
                 
-                // 视觉反馈 - 目标物体短暂变白
                 var originalColor = targetBody.render.fillStyle;
                 targetBody.render.fillStyle = '#ffffff';
                 setTimeout(() => {
@@ -822,15 +674,16 @@ function setupCollisionEvents() {
 
 function setupCountDisplay() {
     countDisplay = document.createElement('div');
-    countDisplay.style.position = 'absolute';
-    countDisplay.style.top = '110px'; // 调整位置，为全屏按钮留空间
-    countDisplay.style.left = '10px'; // 与按钮左对齐
+    countDisplay.style.position = 'fixed';
+    countDisplay.style.top = '60px'; // 调整位置，因为没有全屏按钮
+    countDisplay.style.left = '10px';
     countDisplay.style.fontSize = '16px';
     countDisplay.style.color = '#5599FF';
     countDisplay.style.fontFamily = 'Arial, sans-serif';
-    countDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)'; // 半透明黑色背景
+    countDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
     countDisplay.style.padding = '5px 10px';
     countDisplay.style.borderRadius = '5px';
+    countDisplay.style.zIndex = '9999';
     countDisplay.innerText = `生成的小球数量: ${generatedBallsCount}`;
     document.body.appendChild(countDisplay);
     
@@ -857,10 +710,10 @@ function resetBall() {
     Matter.Body.setPosition(ball, { x: width/2, y: height/4*3 });
     Matter.Body.setVelocity(ball, { x: 0, y: 0 });
     
-    // 重置摄像机位置，使用新的边界范围
+    // 重置摄像机位置
     var targetCameraY = ball.position.y - (height / 2);
-    var worldHeight = 3000;
-    var minCameraY = -200; // 使用与 updateCamera 相同的边界
+    var worldHeight = 3200;
+    var minCameraY = -200;
     var maxCameraY = worldHeight - height + 200;
     camera.y = Math.max(minCameraY, Math.min(maxCameraY, targetCameraY));
     
