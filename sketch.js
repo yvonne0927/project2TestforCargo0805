@@ -26,7 +26,7 @@ var Engine = Matter.Engine,
 // 预加载背景图片
 function preload() {
     try {
-        backgroundImage = loadImage('backgroundTest.png', 
+        backgroundImage = loadImage('https://freight.cargo.site/m/T2486736357167796569947265898432/_20250805125929.png', 
             function(img) {
                 console.log('背景图片加载成功:', img.width + 'x' + img.height);
                 createNativeImage(img);
@@ -56,14 +56,18 @@ function createNativeImage(p5Image) {
 }
 
 function setup() {
-    const canvas = createCanvas(1280, 1920);
-    canvas.style('margin', '0 auto');
-    canvas.style('max-width', '100vw');
-    canvas.style('max-height', '100vh');
-    canvas.style('object-fit', 'contain');
-    noLoop();
+  const canvas = createCanvas(windowWidth, windowHeight);
+  canvas.style('display', 'block');
+  canvas.style('margin', '0');
+  canvas.style('padding', '0');
+  canvas.style('position', 'absolute');
+  canvas.style('top', '0');
+  canvas.style('left', '0');
+  canvas.style('z-index', '0');
+  noLoop();
 
-        resetButton = createButton('Reset Ball');
+
+    resetButton = createButton('Reset Ball');
     resetButton.position(10, 10); // 移到左上角
     resetButton.style('background-color', '#ffcc00');
     resetButton.style('color', '#E52929');
@@ -71,158 +75,18 @@ function setup() {
     resetButton.style('z-index', '1000');
     resetButton.mousePressed(resetBall);
     
-    // 添加全屏按钮
-    let fullscreenButton = createButton('Fullscreen');
-    fullscreenButton.position(10, 60); // 在重置按钮下方
-    fullscreenButton.style('background-color', '#2ecc71');
-    fullscreenButton.style('color', 'white');
-    fullscreenButton.style('padding', '10px');
-    fullscreenButton.style('z-index', '1000');
-    fullscreenButton.mousePressed(toggleFullscreen);
     
-    // 显示全屏提示
-    showFullscreenHint();
-    
-    // 添加全屏样式监听
-    setupFullscreenStyles();
     
     // 初始调整画布适应窗口大小
     setTimeout(() => {
-        adjustCanvasForWindow();
+        adjustCanvasForScaling();
     }, 100);
     
     // Initialize Matter.js after canvas is created
     initializeMatterJS();
 }
 
-function setupFullscreenStyles() {
-    // 添加CSS样式来处理全屏模式（与现有style.css兼容）
-    const style = document.createElement('style');
-    style.textContent = `
-        /* 保持与现有style.css的兼容性 */
-        
-        /* 普通模式下确保画布居中 */
-        canvas {
-            display: block !important;
-            margin: 0 auto !important;
-        }
-        
-        /* 全屏模式下的样式 */
-        body:-webkit-full-screen {
-            background: #000 !important;
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-        
-        body:-moz-full-screen {
-            background: #000 !important;
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-        
-        body:fullscreen {
-            background: #000 !important;
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-        
-        /* 全屏时UI元素的样式 */
-        body:fullscreen button,
-        body:-webkit-full-screen button,
-        body:-moz-full-screen button {
-            position: fixed !important;
-            z-index: 9999 !important;
-        }
-        
-        body:fullscreen div,
-        body:-webkit-full-screen div,
-        body:-moz-full-screen div {
-            position: fixed !important;
-            z-index: 9999 !important;
-        }
-    `;
-    document.head.appendChild(style);
-}
 
-function showFullscreenHint() {
-    // 创建全屏提示
-    let hint = document.createElement('div');
-    hint.style.position = 'fixed';
-    hint.style.top = '50%';
-    hint.style.left = '50%';
-    hint.style.transform = 'translate(-50%, -50%)';
-    hint.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-    hint.style.color = 'white';
-    hint.style.padding = '20px';
-    hint.style.borderRadius = '10px';
-    hint.style.fontSize = '18px';
-    hint.style.textAlign = 'center';
-    hint.style.zIndex = '9999';
-    hint.innerHTML = '点击 "Fullscreen" 按钮或点击游戏区域进入全屏模式<br><small>按 ESC 键退出全屏</small>';
-    hint.id = 'fullscreen-hint';
-    document.body.appendChild(hint);
-    
-    // 3秒后自动隐藏提示
-    setTimeout(() => {
-        let hintElement = document.getElementById('fullscreen-hint');
-        if (hintElement) {
-            hintElement.remove();
-        }
-    }, 3000);
-}
-
-function toggleFullscreen() {
-    if (!document.fullscreenElement) {
-        // 进入全屏
-        document.documentElement.requestFullscreen().then(() => {
-            console.log('已进入全屏模式');
-            hasTriggeredFullscreen = true;
-            
-            // 延迟调整画布，确保全屏模式完全激活
-            setTimeout(() => {
-                adjustCanvasForFullscreen();
-            }, 200);
-            
-            // 隐藏提示
-            let hint = document.getElementById('fullscreen-hint');
-            if (hint) hint.remove();
-        }).catch(err => {
-            console.error('无法进入全屏模式:', err);
-        });
-    } else {
-        // 退出全屏
-        document.exitFullscreen().then(() => {
-            console.log('已退出全屏模式');
-            // 恢复正常的画布样式
-            restoreCanvasStyle();
-        }).catch(err => {
-            console.error('无法退出全屏模式:', err);
-        });
-    }
-}
-
-function adjustCanvasForFullscreen() {
-    const canvas = document.querySelector('canvas');
-    if (canvas) {
-        // 获取当前可用的屏幕尺寸（全屏时的实际尺寸）
-        const screenWidth = window.innerWidth || window.screen.width;
-        const screenHeight = window.innerHeight || window.screen.height;
-        
-        // 计算缩放比例，优先适配宽度
-        const scaleX = screenWidth / 1280;
-        const scaleY = screenHeight / 1920;
-        
-        // 使用宽度缩放比例，让画布宽度填满屏幕
-        const scale = scaleX;
         
         console.log(`全屏模式 - 屏幕尺寸: ${screenWidth}x${screenHeight}`);
         console.log(`宽度缩放比例: ${scaleX.toFixed(3)}, 高度缩放比例: ${scaleY.toFixed(3)}`);
@@ -247,13 +111,9 @@ function adjustCanvasForFullscreen() {
         canvas.style.zIndex = '100';
         
         console.log('已应用全屏样式（宽度适配）');
-    }
-}
 
-function restoreCanvasStyle() {
-    const canvas = document.querySelector('canvas');
-    if (canvas) {
-        console.log('恢复窗口模式样式');
+
+
         
         // 完全重置所有可能的样式
         canvas.style.transform = '';
@@ -277,10 +137,10 @@ function restoreCanvasStyle() {
         
         // 延迟应用窗口适应
         setTimeout(() => {
-            adjustCanvasForWindow();
+            adjustCanvasForScaling();
         }, 50);
-    }
-}
+    
+
 
 // 添加新函数：非全屏模式下的自适应缩放
 function adjustCanvasForWindow() {
